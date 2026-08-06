@@ -1496,11 +1496,11 @@ body {
   .stagger-card {
     box-shadow: 0px 8px 20px rgba(0, 162, 255, 0.1);
   }
-  /* Phones: the robot plays like a video — auto-animating, NOT touch
-     interactive (pointer-events off), so it can't be dragged or cause jank. */
+  /* Phones: the robot plays like a video — auto-animating and NOT touch
+     interactive. pointer-events is set to none in JS only for real touch
+     devices, so a narrow desktop window keeps the fully interactive robot. */
   .hero-3d-container {
     contain: layout paint;
-    pointer-events: none;
     background: radial-gradient(circle at 70% 45%, rgba(0, 162, 255, 0.18), transparent 55%);
   }
   .hero-3d-container spline-viewer {

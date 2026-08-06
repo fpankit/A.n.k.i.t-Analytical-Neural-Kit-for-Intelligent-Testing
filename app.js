@@ -192,11 +192,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Spline Performance Manager ---
   // Continuous full-screen WebGL animation is the #1 jank source. Strategy:
-  //   Desktop: interactive. Freeze after the first rendered frame ("saved
-  //   state"), only play() while dragging, re-freeze a few seconds later.
+  //   Desktop: run natively so mouse drag works (the runtime's own input
+  //   handling needs the render loop alive — calling stop() freezes the scene
+  //   AND breaks repaint-on-drag). We only briefly stop() during scroll to
+  //   keep scrolling smooth, then resume.
   //   Phones:  video mode. The scene auto-plays its animation like a video,
-  //   never responds to touch (CSS pointer-events off), and renders at 1x
-  //   device pixels to keep the GPU cost low.
+  //   never responds to touch, and renders at 1x device pixels.
   const splineApps = () => Array.from(document.querySelectorAll('spline-viewer'))
     .map(v => v._spline || v._runtime || v._splineApp || null)
     .filter(Boolean);
@@ -217,9 +218,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
+  const thawSplines = () => {
+    splineApps().forEach(app => {
+      try { app.play(); } catch (e) { /* ignore */ }
+    });
+  };
+
+  // Video mode only on real touch phones — a narrow PC window still gets the
+  // fully interactive robot.
+  const phoneVideoMode = isMobile && isTouchDevice;
+
   document.querySelectorAll('spline-viewer').forEach(viewer => {
-    if (isMobile) {
-      // Video mode: keep it playing, keep it cheap.
+    if (phoneVideoMode) {
+      // Video mode: keep it playing, keep it cheap, ignore all touches.
+      viewer.style.pointerEvents = 'none';
       viewer.addEventListener('load', () => capCanvasResolution(viewer));
       window.addEventListener('resize', () => capCanvasResolution(viewer), { passive: true });
       // The runtime may re-apply its own sizing; re-cap periodically so the
@@ -228,47 +240,18 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Desktop: interactive with freeze-on-idle.
-    const getApp = () => viewer._spline || viewer._runtime || viewer._splineApp || null;
-
-    const freeze = () => {
-      const app = getApp();
-      if (!app) return;
-      try { if (!app.isStopped) app.stop(); } catch (e) { /* ignore */ }
-    };
-
-    const thaw = () => {
-      const app = getApp();
-      if (!app) return;
-      try { app.play(); } catch (e) { /* ignore */ }
-    };
-
-    let idleTimer = null;
-    const resumeIdle = () => {
-      clearTimeout(idleTimer);
-      idleTimer = setTimeout(freeze, 2500);
-    };
-
-    // First frame rendered → freeze it permanently (saved state).
-    viewer.addEventListener('load', freeze);
-
-    // Animate only while directly interacting; re-freeze shortly after.
-    viewer.addEventListener('pointerdown', thaw);
-    viewer.addEventListener('pointermove', (e) => { if (e.buttons > 0) thaw(); });
-    viewer.addEventListener('pointerup', resumeIdle);
-    viewer.addEventListener('pointercancel', resumeIdle);
-    viewer.addEventListener('pointerleave', resumeIdle);
+    // Desktop: leave the runtime alone so drag interaction works natively.
+    // The scroll handler below briefly pauses it during scroll.
   });
 
-  // Freeze during scroll on desktop; on phones the "video" keeps playing.
-  let scrollRaf = null;
+  // Pause scenes while scrolling (desktop) so zero WebGL work happens
+  // mid-scroll, then resume right after. Phones keep their "video" rolling.
+  let scrollTimer = null;
   window.addEventListener('scroll', () => {
-    if (isMobile) return;
-    if (scrollRaf) return;
-    scrollRaf = requestAnimationFrame(() => {
-      scrollRaf = null;
-      freezeSplines();
-    });
+    if (phoneVideoMode) return;
+    freezeSplines();
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(thawSplines, 400);
   }, { passive: true });
 
   // --- Block LinkedIn links baked into Spline scene hotspots ---
