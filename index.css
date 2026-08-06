@@ -415,6 +415,7 @@ body {
   padding: 120px 20px;
   position: relative;
   z-index: 2;
+  overflow: hidden;
   background-color: var(--bg-color);
   border-bottom: 1px solid rgba(0, 162, 255, 0.08);
 }
@@ -468,18 +469,36 @@ body {
   color: var(--text-secondary);
 }
 
-.about-3d-container {
-  position: relative;
-  width: 100%;
-  height: 520px;
-  border-radius: 24px;
-  overflow: hidden;
-  background: radial-gradient(circle at 50% 40%, rgba(0, 162, 255, 0.08), transparent 60%);
+/* Cube scene floating behind the About content */
+.about-3d-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.28;
+  transform: scale(0.92);
+  filter: blur(6px);
+  transition: opacity 0.6s ease, transform 0.6s ease, filter 0.6s ease;
+  pointer-events: none;
 }
 
-.about-3d-container spline-viewer {
+.about-3d-bg spline-viewer {
   width: 100%;
   height: 100%;
+}
+
+.about-3d-bg.active {
+  opacity: 0.95;
+  transform: scale(1.05);
+  filter: blur(0);
+}
+
+.about-section .section-header,
+.about-section .about-layout {
+  position: relative;
+  z-index: 1;
 }
 
 /* Policy Sections */
@@ -1497,9 +1516,13 @@ body {
     box-shadow: 0px 8px 20px rgba(0, 162, 255, 0.1);
   }
   /* Promote the 3D layer so WebGL isn't re-composited on every scroll frame */
-  .hero-3d-container,
-  .about-3d-container {
+  .hero-3d-container {
     contain: layout paint;
+  }
+  /* No blur filters on weak mobile GPUs */
+  .about-3d-bg {
+    filter: none;
+    opacity: 0.4;
   }
 }
 
