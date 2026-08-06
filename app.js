@@ -18,6 +18,25 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('scroll', handleScroll, { passive: true });
   handleScroll(); // Run once in case user starts scrolled down
 
+  // --- Hero Spotlight (cursor-following glow over robot) ---
+  const heroSection = document.getElementById('hero');
+  const heroSpotlight = document.getElementById('hero-spotlight');
+  if (heroSection && heroSpotlight) {
+    heroSection.addEventListener('mousemove', (e) => {
+      const rect = heroSection.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+      heroSpotlight.style.setProperty('--spot-x', x + '%');
+      heroSpotlight.style.setProperty('--spot-y', y + '%');
+    });
+    heroSection.addEventListener('mouseleave', () => {
+      heroSpotlight.style.opacity = '0';
+    });
+    heroSection.addEventListener('mouseenter', () => {
+      heroSpotlight.style.opacity = '1';
+    });
+  }
+
   // --- Mobile Navigation Menu ---
   const mobileToggle = document.querySelector('.mobile-nav-toggle');
   const navMenu = document.querySelector('.nav-menu');
@@ -258,8 +277,8 @@ document.addEventListener('DOMContentLoaded', () => {
     scrollTimer = setTimeout(resumeSplines, 400);
   }, { passive: true });
 
-  // --- About feature cards: cursor-following spotlight (card grow/rotate is CSS) ---
-  if (window.matchMedia('(hover: hover)').matches) {
+  // --- About feature cards: 3D tilt toward the cursor + spotlight position ---
+  if (!prefersReducedMotion && window.matchMedia('(hover: hover)').matches) {
     document.querySelectorAll('.about-feature-item').forEach(card => {
       card.addEventListener('pointermove', (e) => {
         const r = card.getBoundingClientRect();
@@ -267,6 +286,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const py = (e.clientY - r.top) / r.height;
         card.style.setProperty('--mx', `${px * 100}%`);
         card.style.setProperty('--my', `${py * 100}%`);
+        card.style.transform = `rotateX(${(0.5 - py) * 10}deg) rotateY(${(px - 0.5) * 10}deg)`;
+      });
+      card.addEventListener('pointerleave', () => {
+        card.style.transform = 'rotateX(0deg) rotateY(0deg)';
       });
     });
   }
