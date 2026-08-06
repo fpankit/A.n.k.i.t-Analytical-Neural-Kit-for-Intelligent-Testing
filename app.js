@@ -132,14 +132,14 @@ document.addEventListener('DOMContentLoaded', () => {
       .hero-3d-container spline-viewer {
         animation: splinePopDrift 16s ease-in-out infinite;
       }
-      .about-3d-bg spline-viewer {
+      .about-3d-container spline-viewer {
         animation: splinePopDrift 20s ease-in-out infinite 4s;
       }
     `;
     document.head.appendChild(splineStyle);
 
     // Also add a subtle random position shift via JS for more organic feel
-    document.querySelectorAll('.hero-3d-container spline-viewer, .about-3d-bg spline-viewer').forEach(viewer => {
+    document.querySelectorAll('.hero-3d-container spline-viewer, .about-3d-container spline-viewer').forEach(viewer => {
       const randomShift = () => {
         const x = (Math.random() - 0.5) * 20;
         const y = (Math.random() - 0.5) * 16;
@@ -235,30 +235,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!isMobile) thawSplines();
     }, 400);
   }, { passive: true });
-
-  // --- About "cube experience": hover a project → cube springs to life ---
-  const aboutCube = document.querySelector('.about-3d-bg spline-viewer');
-  if (aboutCube) {
-    const aboutCubeBg = document.querySelector('.about-3d-bg');
-    const cubeApp = () => aboutCube._spline || aboutCube._runtime || aboutCube._splineApp || null;
-
-    const playCube = () => {
-      if (aboutCubeBg) aboutCubeBg.classList.add('active');
-      const app = cubeApp();
-      if (app) { try { app.play(); } catch (e) { /* ignore */ } }
-    };
-
-    const pauseCube = () => {
-      if (aboutCubeBg) aboutCubeBg.classList.remove('active');
-      const app = cubeApp();
-      if (app) { try { if (!app.isStopped) app.stop(); } catch (e) { /* ignore */ } }
-    };
-
-    document.querySelectorAll('.about-feature-item').forEach(item => {
-      item.addEventListener('pointerenter', playCube);
-      item.addEventListener('pointerleave', pauseCube);
-    });
-  }
 
   // --- Block LinkedIn links baked into Spline scene hotspots ---
   const isLinkedInUrl = (u) => typeof u === 'string' && /linkedin\.com/i.test(u);
