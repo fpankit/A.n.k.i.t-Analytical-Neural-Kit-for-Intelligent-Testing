@@ -703,8 +703,12 @@ body {
 /* Non-center cards */
 .stagger-card:not(.center-active) {
   z-index: 0;
-  opacity: 0.45;
+  opacity: 0.65;
   filter: blur(1px);
+  color: #1f2937;
+}
+
+.stagger-card:not(.center-active) .author-title {
   color: #1f2937;
 }
 
@@ -878,7 +882,7 @@ body {
   gap: 16px;
 }
 
-.footer-link-col h4 {
+.footer-link-col h3 {
   font-family: var(--font-heading);
   font-size: 0.9rem;
   font-weight: 700;
@@ -907,7 +911,7 @@ body {
   flex-wrap: wrap;
   gap: 16px;
   font-size: 0.85rem;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }
 
 /* Mobile responsive navigation */
@@ -1491,5 +1495,18 @@ body {
   .about-3d-container {
     contain: layout paint;
   }
+}
+
+/* Screen-reader-only text (SEO/a11y headings without visual impact) */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
