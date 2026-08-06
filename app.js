@@ -158,12 +158,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- Spline Performance Manager ---
-  // Continuous full-screen WebGL animation is the #1 Android jank source.
-  // Strategy:
-  //   1. On phones: stop() each scene after it loads (last frame stays visible),
-  //      render the canvas at 1x device pixels, and only play() while touching.
-  //   2. While the page is being scrolled: freeze scenes so zero WebGL work
-  //      happens mid-scroll; resume briefly after the scroll stops.
+  // Continuous full-screen WebGL animation is the #1 jank source. Strategy:
+  //   1. Load the scene ONCE and keep it loaded forever (no `unloadable`), so it
+  //      never reloads/re-animates when scrolled back into view.
+  //   2. After the first frame renders, freeze the scene permanently — the last
+  //      rendered frame stays on screen ("saved state").
+  //   3. Only play() while the user is actively interacting with the viewer
+  //      (drag/touch); re-freeze a few seconds after they stop.
+  //   4. On phones, additionally render the canvas at 1x device pixels.
   const splineApps = () => Array.from(document.querySelectorAll('spline-viewer'))
     .map(v => v._spline || v._runtime || v._splineApp || null)
     .filter(Boolean);
@@ -184,56 +186,48 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
-  const thawSplines = () => {
-    splineApps().forEach(app => {
+  document.querySelectorAll('spline-viewer').forEach(viewer => {
+    const getApp = () => viewer._spline || viewer._runtime || viewer._splineApp || null;
+
+    const freeze = () => {
+      if (isMobile) capCanvasResolution(viewer);
+      const app = getApp();
+      if (!app) return;
+      try { if (!app.isStopped) app.stop(); } catch (e) { /* ignore */ }
+    };
+
+    const thaw = () => {
+      const app = getApp();
+      if (!app) return;
       try { app.play(); } catch (e) { /* ignore */ }
-    });
-  };
+    };
 
-  if (isMobile) {
-    document.querySelectorAll('spline-viewer').forEach(viewer => {
-      const getApp = () => viewer._spline || viewer._runtime || viewer._splineApp || null;
+    let idleTimer = null;
+    const resumeIdle = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(freeze, 2500);
+    };
 
-      const freeze = () => {
-        capCanvasResolution(viewer);
-        const app = getApp();
-        if (!app) return;
-        try { if (!app.isStopped) app.stop(); } catch (e) { /* ignore */ }
-      };
+    // First frame rendered → freeze it permanently (saved state).
+    viewer.addEventListener('load', freeze);
+    if (isMobile) window.addEventListener('resize', () => capCanvasResolution(viewer), { passive: true });
 
-      const thaw = () => {
-        const app = getApp();
-        if (!app) return;
-        try { app.play(); } catch (e) { /* ignore */ }
-      };
+    // Animate only while directly interacting; re-freeze shortly after.
+    viewer.addEventListener('pointerdown', thaw);
+    viewer.addEventListener('pointermove', (e) => { if (e.buttons > 0) thaw(); });
+    viewer.addEventListener('pointerup', resumeIdle);
+    viewer.addEventListener('pointercancel', resumeIdle);
+    viewer.addEventListener('pointerleave', resumeIdle);
+  });
 
-      let idleTimer = null;
-      const resumeIdle = () => {
-        clearTimeout(idleTimer);
-        idleTimer = setTimeout(freeze, 4000);
-      };
-
-      viewer.addEventListener('load', () => {
-        freeze();
-        window.addEventListener('resize', () => capCanvasResolution(viewer), { passive: true });
-      });
-
-      viewer.addEventListener('pointerdown', () => thaw());
-      viewer.addEventListener('pointerup', resumeIdle);
-      viewer.addEventListener('pointercancel', resumeIdle);
-      viewer.addEventListener('pointerleave', resumeIdle);
-    });
-  }
-
-  // Pause all scenes while the user is scrolling (applies to all devices).
-  let scrollTimer = null;
+  // Freeze during scroll; do NOT resume — scenes stay frozen until interaction.
+  let scrollRaf = null;
   window.addEventListener('scroll', () => {
-    freezeSplines();
-    clearTimeout(scrollTimer);
-    scrollTimer = setTimeout(() => {
-      // On phones scenes stay frozen (only touch resumes them)
-      if (!isMobile) thawSplines();
-    }, 400);
+    if (scrollRaf) return;
+    scrollRaf = requestAnimationFrame(() => {
+      scrollRaf = null;
+      freezeSplines();
+    });
   }, { passive: true });
 
   // --- Block LinkedIn links baked into Spline scene hotspots ---
