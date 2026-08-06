@@ -157,11 +157,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- Deferred Spline runtime loading ---
+  // --- Spline runtime loading ---
   // The Spline runtime (596KB JS + 182KB wasm) plus the 1.2MB scene are the
-  // heaviest assets on the page. On desktop we load them right away (fast
-  // hero). On phones we wait until the page has fully loaded and the main
-  // thread is idle, so first paint and initial scrolling are never blocked.
+  // heaviest assets on the page. Phones don't run WebGL at all (the viewer is
+  // hidden via CSS for guaranteed smoothness), so we never download the runtime
+  // there. Desktop loads it right away for a fast, interactive hero.
   const needsSpline = !!document.querySelector('spline-viewer');
 
   const loadSplineRuntime = () => {
@@ -185,20 +185,8 @@ document.addEventListener('DOMContentLoaded', () => {
     head.appendChild(s);
   };
 
-  if (needsSpline) {
-    if (isMobile) {
-      const startDeferred = () => {
-        if ('requestIdleCallback' in window) {
-          requestIdleCallback(loadSplineRuntime, { timeout: 3000 });
-        } else {
-          setTimeout(loadSplineRuntime, 1200);
-        }
-      };
-      if (document.readyState === 'complete') startDeferred();
-      else window.addEventListener('load', startDeferred, { once: true });
-    } else {
-      loadSplineRuntime();
-    }
+  if (needsSpline && !isMobile) {
+    loadSplineRuntime();
   }
 
   // --- Spline Performance Manager ---

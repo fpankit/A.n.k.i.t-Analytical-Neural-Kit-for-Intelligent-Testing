@@ -1496,10 +1496,14 @@ body {
   .stagger-card {
     box-shadow: 0px 8px 20px rgba(0, 162, 255, 0.1);
   }
-  /* Promote the 3D layer so WebGL isn't re-composited on every scroll frame */
-  .hero-3d-container,
-  .about-3d-container {
+  /* Phones: no WebGL at all. The hero keeps its typography + glow spotlight,
+     the interactive 3D robot stays desktop-only for guaranteed smoothness. */
+  .hero-3d-container {
     contain: layout paint;
+    background: radial-gradient(circle at 70% 45%, rgba(0, 162, 255, 0.18), transparent 55%);
+  }
+  .hero-3d-container spline-viewer {
+    display: none;
   }
 }
 
