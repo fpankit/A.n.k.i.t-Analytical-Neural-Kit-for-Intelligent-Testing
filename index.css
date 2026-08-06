@@ -487,10 +487,27 @@ body {
 .about-feature-item:hover {
   border-color: rgba(0, 162, 255, 0.4);
   box-shadow: 0 12px 44px rgba(0, 162, 255, 0.18), 0 0 28px rgba(0, 162, 255, 0.1);
+  z-index: 3;
+  animation: aboutCardSwing 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
 .about-feature-item:hover::before {
   opacity: 1;
+}
+
+/* Hover: the whole card grows and swings with rotation (90deg peak → -80deg),
+   then holds the bigger, rotated size while hovered */
+@keyframes aboutCardSwing {
+  0%   { transform: scale(1)    rotate(0deg); }
+  35%  { transform: scale(1.18) rotate(90deg); }
+  100% { transform: scale(1.12) rotate(-80deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .about-feature-item:hover {
+    animation: none;
+    transform: none;
+  }
 }
 
 .about-feature-icon {
@@ -513,15 +530,10 @@ body {
   50% { filter: drop-shadow(0 0 10px rgba(0, 162, 255, 0.55)); }
 }
 
-/* Hover: icon grows large and swings with rotation (90deg peak → -80deg), then stays big */
-@keyframes aboutIconHoverSwing {
-  0%   { transform: scale(1)    rotate(0deg); }
-  35%  { transform: scale(1.55) rotate(90deg); }
-  100% { transform: scale(1.45) rotate(-80deg); }
-}
-
+/* Hover: icon keeps a subtle glow (the card itself does the big rotation) */
 .about-feature-item:hover .about-feature-icon {
-  animation: aboutIconHoverSwing 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation: none;
+  transform: translateY(0) scale(1.1);
   filter: drop-shadow(0 0 12px rgba(0, 162, 255, 0.9)) drop-shadow(0 0 30px rgba(0, 162, 255, 0.45));
 }
 

@@ -258,8 +258,8 @@ document.addEventListener('DOMContentLoaded', () => {
     scrollTimer = setTimeout(resumeSplines, 400);
   }, { passive: true });
 
-  // --- About feature cards: 3D tilt toward the cursor + spotlight position ---
-  if (!prefersReducedMotion && window.matchMedia('(hover: hover)').matches) {
+  // --- About feature cards: cursor-following spotlight (card grow/rotate is CSS) ---
+  if (window.matchMedia('(hover: hover)').matches) {
     document.querySelectorAll('.about-feature-item').forEach(card => {
       card.addEventListener('pointermove', (e) => {
         const r = card.getBoundingClientRect();
@@ -267,10 +267,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const py = (e.clientY - r.top) / r.height;
         card.style.setProperty('--mx', `${px * 100}%`);
         card.style.setProperty('--my', `${py * 100}%`);
-        card.style.transform = `rotateX(${(0.5 - py) * 10}deg) rotateY(${(px - 0.5) * 10}deg)`;
-      });
-      card.addEventListener('pointerleave', () => {
-        card.style.transform = 'rotateX(0deg) rotateY(0deg)';
       });
     });
   }
