@@ -157,18 +157,50 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- Mobile Spline Quality Tuning ---
-  // Render WebGL scenes at 1x device pixels on phones (halves/quarters GPU fill cost)
+  // --- Mobile Spline Performance: freeze render loops until touched ---
+  // Continuous full-screen WebGL animation is the #1 Android jank source.
+  // On phones we stop() each scene after it loads (last frame stays visible),
+  // render the canvas at 1x device pixels, and only play() while the user is
+  // actively touching/dragging the scene.
   if (isMobile) {
     document.querySelectorAll('spline-viewer').forEach(viewer => {
-      const tuneRuntime = () => {
-        const rt = viewer._runtime || viewer._spline;
-        if (rt && rt.renderingConfig) {
-          try { rt.renderingConfig.dpr = 1; } catch (e) { /* ignore */ }
-        }
+      const getApp = () => viewer._spline || viewer._runtime || viewer._splineApp || null;
+
+      const capDpr = (app) => {
+        const canvas = app && app.canvas;
+        if (!canvas || !canvas.clientWidth || !canvas.clientHeight) return;
+        canvas.width = Math.round(canvas.clientWidth);
+        canvas.height = Math.round(canvas.clientHeight);
       };
-      viewer.addEventListener('load', tuneRuntime);
-      tuneRuntime();
+
+      const freeze = () => {
+        const app = getApp();
+        if (!app) return;
+        capDpr(app);
+        try { if (!app.isStopped) app.stop(); } catch (e) { /* ignore */ }
+      };
+
+      const thaw = () => {
+        const app = getApp();
+        if (!app) return;
+        try { app.play(); } catch (e) { /* ignore */ }
+      };
+
+      let idleTimer = null;
+      const resumeIdle = () => {
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(freeze, 4000);
+      };
+
+      viewer.addEventListener('load', () => {
+        freeze();
+        window.addEventListener('resize', () => capDpr(getApp()), { passive: true });
+      });
+
+      viewer.addEventListener('pointerdown', () => thaw());
+      viewer.addEventListener('pointerup', resumeIdle);
+      viewer.addEventListener('pointercancel', resumeIdle);
+      viewer.addEventListener('pointerleave', resumeIdle);
     });
   }
 
