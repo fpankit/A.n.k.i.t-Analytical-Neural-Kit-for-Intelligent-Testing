@@ -159,9 +159,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Spline runtime loading ---
   // The Spline runtime (596KB JS + 182KB wasm) plus the 1.2MB scene are the
-  // heaviest assets on the page. Phones don't run WebGL at all (the viewer is
-  // hidden via CSS for guaranteed smoothness), so we never download the runtime
-  // there. Desktop loads it right away for a fast, interactive hero.
+  // heaviest assets on the page. They're loaded on every device: desktop runs
+  // an interactive robot, phones run the same scene as a non-interactive,
+  // auto-playing "video" (see the performance manager below).
   const needsSpline = !!document.querySelector('spline-viewer');
 
   const loadSplineRuntime = () => {
@@ -186,49 +186,17 @@ document.addEventListener('DOMContentLoaded', () => {
     return s;
   };
 
-  if (needsSpline && !isMobile) {
+  if (needsSpline) {
     loadSplineRuntime();
-  }
-
-  // Mobile: WebGL is opt-in via a "View 3D" tap button so the phone stays
-  // smooth until the user asks for the robot.
-  if (needsSpline && isMobile) {
-    const trigger = document.querySelector('#hero-3d-trigger');
-    const container = document.querySelector('.hero-3d-container');
-    if (trigger) {
-      trigger.addEventListener('click', () => {
-        trigger.classList.add('loading');
-        const script = loadSplineRuntime();
-        const reveal = () => {
-          if (container) {
-            container.classList.add('is-loaded3d');
-            const viewer = container.querySelector('spline-viewer');
-            if (viewer) {
-              capCanvasResolution(viewer);
-              try {
-                const app = viewer._spline || viewer._runtime || viewer._splineApp || null;
-                if (app && !app.isStopped) app.stop();
-              } catch (e) { /* ignore */ }
-            }
-          }
-          trigger.classList.add('hidden');
-        };
-        if (script) script.addEventListener('load', reveal, { once: true });
-        // Safety net: reveal even if the load event is missed.
-        setTimeout(reveal, 4000);
-      });
-    }
   }
 
   // --- Spline Performance Manager ---
   // Continuous full-screen WebGL animation is the #1 jank source. Strategy:
-  //   1. Load the scene ONCE and keep it loaded forever (no `unloadable`), so it
-  //      never reloads/re-animates when scrolled back into view.
-  //   2. After the first frame renders, freeze the scene permanently — the last
-  //      rendered frame stays on screen ("saved state").
-  //   3. Only play() while the user is actively interacting with the viewer
-  //      (drag/touch); re-freeze a few seconds after they stop.
-  //   4. On phones, additionally render the canvas at 1x device pixels.
+  //   Desktop: interactive. Freeze after the first rendered frame ("saved
+  //   state"), only play() while dragging, re-freeze a few seconds later.
+  //   Phones:  video mode. The scene auto-plays its animation like a video,
+  //   never responds to touch (CSS pointer-events off), and renders at 1x
+  //   device pixels to keep the GPU cost low.
   const splineApps = () => Array.from(document.querySelectorAll('spline-viewer'))
     .map(v => v._spline || v._runtime || v._splineApp || null)
     .filter(Boolean);
@@ -250,10 +218,20 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   document.querySelectorAll('spline-viewer').forEach(viewer => {
+    if (isMobile) {
+      // Video mode: keep it playing, keep it cheap.
+      viewer.addEventListener('load', () => capCanvasResolution(viewer));
+      window.addEventListener('resize', () => capCanvasResolution(viewer), { passive: true });
+      // The runtime may re-apply its own sizing; re-cap periodically so the
+      // phone always renders at ~1x.
+      setInterval(() => capCanvasResolution(viewer), 2000);
+      return;
+    }
+
+    // Desktop: interactive with freeze-on-idle.
     const getApp = () => viewer._spline || viewer._runtime || viewer._splineApp || null;
 
     const freeze = () => {
-      if (isMobile) capCanvasResolution(viewer);
       const app = getApp();
       if (!app) return;
       try { if (!app.isStopped) app.stop(); } catch (e) { /* ignore */ }
@@ -273,7 +251,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // First frame rendered → freeze it permanently (saved state).
     viewer.addEventListener('load', freeze);
-    if (isMobile) window.addEventListener('resize', () => capCanvasResolution(viewer), { passive: true });
 
     // Animate only while directly interacting; re-freeze shortly after.
     viewer.addEventListener('pointerdown', thaw);
@@ -283,9 +260,10 @@ document.addEventListener('DOMContentLoaded', () => {
     viewer.addEventListener('pointerleave', resumeIdle);
   });
 
-  // Freeze during scroll; do NOT resume — scenes stay frozen until interaction.
+  // Freeze during scroll on desktop; on phones the "video" keeps playing.
   let scrollRaf = null;
   window.addEventListener('scroll', () => {
+    if (isMobile) return;
     if (scrollRaf) return;
     scrollRaf = requestAnimationFrame(() => {
       scrollRaf = null;

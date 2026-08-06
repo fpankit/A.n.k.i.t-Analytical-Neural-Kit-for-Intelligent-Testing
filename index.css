@@ -328,11 +328,6 @@ body {
   pointer-events: none; /* Clicks register to the 3D canvas behind */
 }
 
-/* Mobile-only opt-in 3D loader (shown inside the mobile media query) */
-.hero-3d-trigger {
-  display: none;
-}
-
 .hero-text-container {
   display: flex;
   flex-direction: column;
@@ -1501,49 +1496,15 @@ body {
   .stagger-card {
     box-shadow: 0px 8px 20px rgba(0, 162, 255, 0.1);
   }
-  /* Phones: WebGL is opt-in. The hero keeps its typography + glow by default;
-     the robot loads only when the user taps "View 3D" (tap-to-load). */
+  /* Phones: the robot plays like a video — auto-animating, NOT touch
+     interactive (pointer-events off), so it can't be dragged or cause jank. */
   .hero-3d-container {
     contain: layout paint;
+    pointer-events: none;
     background: radial-gradient(circle at 70% 45%, rgba(0, 162, 255, 0.18), transparent 55%);
   }
   .hero-3d-container spline-viewer {
-    display: none;
-  }
-  .hero-3d-container.is-loaded3d spline-viewer {
     display: block;
-  }
-
-  .hero-3d-trigger {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    position: absolute;
-    bottom: 40px;
-    right: 24px;
-    z-index: 3;
-    padding: 10px 18px;
-    border-radius: 999px;
-    border: 1px solid rgba(0, 162, 255, 0.45);
-    background: rgba(0, 162, 255, 0.14);
-    color: #fff;
-    font-size: 0.85rem;
-    font-weight: 600;
-    font-family: var(--font-body);
-    letter-spacing: 0.04em;
-    cursor: pointer;
-    box-shadow: 0 0 22px rgba(0, 162, 255, 0.3);
-    transition: transform 0.2s ease, opacity 0.3s ease;
-  }
-  .hero-3d-trigger:active {
-    transform: scale(0.96);
-  }
-  .hero-3d-trigger.loading {
-    opacity: 0.6;
-    pointer-events: none;
-  }
-  .hero-3d-trigger.hidden {
-    display: none;
   }
 }
 
