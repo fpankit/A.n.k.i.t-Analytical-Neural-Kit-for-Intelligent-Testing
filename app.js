@@ -275,6 +275,26 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // --- Page scroll progress bar ---
+  const scrollProgressBar = document.getElementById('scroll-progress');
+  if (scrollProgressBar) {
+    const updateScrollProgress = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const pct = max > 0 ? (window.scrollY / max) * 100 : 0;
+      scrollProgressBar.style.width = pct + '%';
+    };
+    let spRaf = null;
+    window.addEventListener('scroll', () => {
+      if (spRaf) return;
+      spRaf = requestAnimationFrame(() => {
+        spRaf = null;
+        updateScrollProgress();
+      });
+    }, { passive: true });
+    window.addEventListener('resize', updateScrollProgress, { passive: true });
+    updateScrollProgress();
+  }
+
   // --- Block LinkedIn links baked into Spline scene hotspots ---
   const isLinkedInUrl = (u) => typeof u === 'string' && /linkedin\.com/i.test(u);
   const originalWindowOpen = window.open;
