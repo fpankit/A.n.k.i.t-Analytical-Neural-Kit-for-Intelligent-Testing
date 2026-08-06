@@ -157,26 +157,47 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- Mobile Spline Performance: freeze render loops until touched ---
+  // --- Spline Performance Manager ---
   // Continuous full-screen WebGL animation is the #1 Android jank source.
-  // On phones we stop() each scene after it loads (last frame stays visible),
-  // render the canvas at 1x device pixels, and only play() while the user is
-  // actively touching/dragging the scene.
+  // Strategy:
+  //   1. On phones: stop() each scene after it loads (last frame stays visible),
+  //      render the canvas at 1x device pixels, and only play() while touching.
+  //   2. While the page is being scrolled: freeze scenes so zero WebGL work
+  //      happens mid-scroll; resume briefly after the scroll stops.
+  const splineApps = () => Array.from(document.querySelectorAll('spline-viewer'))
+    .map(v => v._spline || v._runtime || v._splineApp || null)
+    .filter(Boolean);
+
+  const capCanvasResolution = (viewer) => {
+    // Direct, API-independent resolution cap (works even if the runtime handle
+    // is unreachable). Cuts GPU fill cost by ~4-6x on high-DPI phones.
+    const canvas = viewer.shadowRoot && viewer.shadowRoot.querySelector('canvas');
+    if (canvas && canvas.clientWidth && canvas.clientHeight) {
+      canvas.width = Math.round(canvas.clientWidth);
+      canvas.height = Math.round(canvas.clientHeight);
+    }
+  };
+
+  const freezeSplines = () => {
+    splineApps().forEach(app => {
+      try { if (!app.isStopped) app.stop(); } catch (e) { /* ignore */ }
+    });
+  };
+
+  const thawSplines = () => {
+    splineApps().forEach(app => {
+      try { app.play(); } catch (e) { /* ignore */ }
+    });
+  };
+
   if (isMobile) {
     document.querySelectorAll('spline-viewer').forEach(viewer => {
       const getApp = () => viewer._spline || viewer._runtime || viewer._splineApp || null;
 
-      const capDpr = (app) => {
-        const canvas = app && app.canvas;
-        if (!canvas || !canvas.clientWidth || !canvas.clientHeight) return;
-        canvas.width = Math.round(canvas.clientWidth);
-        canvas.height = Math.round(canvas.clientHeight);
-      };
-
       const freeze = () => {
+        capCanvasResolution(viewer);
         const app = getApp();
         if (!app) return;
-        capDpr(app);
         try { if (!app.isStopped) app.stop(); } catch (e) { /* ignore */ }
       };
 
@@ -194,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       viewer.addEventListener('load', () => {
         freeze();
-        window.addEventListener('resize', () => capDpr(getApp()), { passive: true });
+        window.addEventListener('resize', () => capCanvasResolution(viewer), { passive: true });
       });
 
       viewer.addEventListener('pointerdown', () => thaw());
@@ -203,6 +224,29 @@ document.addEventListener('DOMContentLoaded', () => {
       viewer.addEventListener('pointerleave', resumeIdle);
     });
   }
+
+  // Pause all scenes while the user is scrolling (applies to all devices).
+  let scrollTimer = null;
+  window.addEventListener('scroll', () => {
+    freezeSplines();
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => {
+      // On phones scenes stay frozen (only touch resumes them)
+      if (!isMobile) thawSplines();
+    }, 400);
+  }, { passive: true });
+
+  // --- Block LinkedIn links baked into Spline scene hotspots ---
+  const isLinkedInUrl = (u) => typeof u === 'string' && /linkedin\.com/i.test(u);
+  const originalWindowOpen = window.open;
+  window.open = function (url, ...rest) {
+    if (isLinkedInUrl(url)) return null;
+    return originalWindowOpen.apply(this, arguments);
+  };
+  document.addEventListener('click', (e) => {
+    const link = e.target && e.target.closest ? e.target.closest('a') : null;
+    if (link && isLinkedInUrl(link.href)) e.preventDefault();
+  }, true);
 
   // Global MutationObserver to catch any late-rendered Spline badges
   const globalSplineObserver = new MutationObserver((mutations) => {
