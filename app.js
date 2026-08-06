@@ -1,18 +1,21 @@
 // Ankit AI Agency Landing Page Interactions
 
 document.addEventListener('DOMContentLoaded', () => {
-  // --- Header Scroll Effect ---
+  // --- Header Scroll Effect (rAF-throttled) ---
   const header = document.getElementById('header');
   
+  let scrollTicking = false;
   const handleScroll = () => {
-    if (window.scrollY > 20) {
-      header.classList.add('scrolled');
-    } else {
-      header.classList.remove('scrolled');
+    if (!scrollTicking) {
+      requestAnimationFrame(() => {
+        header.classList.toggle('scrolled', window.scrollY > 20);
+        scrollTicking = false;
+      });
+      scrollTicking = true;
     }
   };
   
-  window.addEventListener('scroll', handleScroll);
+  window.addEventListener('scroll', handleScroll, { passive: true });
   handleScroll(); // Run once in case user starts scrolled down
 
   // --- Mobile Navigation Menu ---
@@ -93,20 +96,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     splineViewer.addEventListener('load', hideSplineLogo);
 
-    // Aggressive polling: check every 50ms for 8 seconds
+    // Lightweight polling: check every 250ms for ~6 seconds
     let checks = 0;
     const interval = setInterval(() => {
       hideSplineLogo();
       checks++;
-      if (checks > 160) clearInterval(interval);
-    }, 50);
+      if (checks > 24) clearInterval(interval);
+    }, 250);
   });
 
   // --- Mobile Spline Touch & Auto-Animation ---
   const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   const isMobile = window.matchMedia('(max-width: 768px)').matches;
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  if (isMobile && !isTouchDevice) {
+  if (isMobile && !isTouchDevice && !prefersReducedMotion) {
     // Non-touch mobile: random pop-in/pop-out + drift animation on spline viewers
     const splineStyle = document.createElement('style');
     splineStyle.textContent = `
@@ -150,6 +154,21 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('spline-viewer').forEach(viewer => {
       viewer.style.touchAction = 'none';
       viewer.style.pointerEvents = 'auto';
+    });
+  }
+
+  // --- Mobile Spline Quality Tuning ---
+  // Render WebGL scenes at 1x device pixels on phones (halves/quarters GPU fill cost)
+  if (isMobile) {
+    document.querySelectorAll('spline-viewer').forEach(viewer => {
+      const tuneRuntime = () => {
+        const rt = viewer._runtime || viewer._spline;
+        if (rt && rt.renderingConfig) {
+          try { rt.renderingConfig.dpr = 1; } catch (e) { /* ignore */ }
+        }
+      };
+      viewer.addEventListener('load', tuneRuntime);
+      tuneRuntime();
     });
   }
 

@@ -1447,3 +1447,49 @@ body {
   }
 }
 
+/* --- Mobile & Performance Optimizations --- */
+
+/* Avoid 100vh jumpiness on Android (URL bar collapse) */
+.hero-section {
+  min-height: 100vh;
+}
+@supports (min-height: 100svh) {
+  .hero-section {
+    min-height: 100svh;
+  }
+}
+
+/* Skip rendering/repainting below-fold sections */
+.about-section,
+.testimonials-section,
+.faq-section,
+.contact-section,
+.main-footer {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 800px;
+}
+
+@media (max-width: 768px) {
+  /* Disable expensive blur / backdrop-filter filters on weak mobile GPUs */
+  .glow-spotlight {
+    filter: none;
+  }
+  .nav-menu,
+  .btn-secondary,
+  .policy-header {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .stagger-card:not(.center-active) {
+    filter: none;
+  }
+  .stagger-card {
+    box-shadow: 0px 8px 20px rgba(0, 162, 255, 0.1);
+  }
+  /* Promote the 3D layer so WebGL isn't re-composited on every scroll frame */
+  .hero-3d-container,
+  .about-3d-container {
+    contain: layout paint;
+  }
+}
+
