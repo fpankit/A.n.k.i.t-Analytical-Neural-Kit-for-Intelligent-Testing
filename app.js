@@ -183,10 +183,41 @@ document.addEventListener('DOMContentLoaded', () => {
     s.src = 'https://unpkg.com/@splinetool/viewer@1.9.0/build/spline-viewer.js';
     s.async = true;
     head.appendChild(s);
+    return s;
   };
 
   if (needsSpline && !isMobile) {
     loadSplineRuntime();
+  }
+
+  // Mobile: WebGL is opt-in via a "View 3D" tap button so the phone stays
+  // smooth until the user asks for the robot.
+  if (needsSpline && isMobile) {
+    const trigger = document.querySelector('#hero-3d-trigger');
+    const container = document.querySelector('.hero-3d-container');
+    if (trigger) {
+      trigger.addEventListener('click', () => {
+        trigger.classList.add('loading');
+        const script = loadSplineRuntime();
+        const reveal = () => {
+          if (container) {
+            container.classList.add('is-loaded3d');
+            const viewer = container.querySelector('spline-viewer');
+            if (viewer) {
+              capCanvasResolution(viewer);
+              try {
+                const app = viewer._spline || viewer._runtime || viewer._splineApp || null;
+                if (app && !app.isStopped) app.stop();
+              } catch (e) { /* ignore */ }
+            }
+          }
+          trigger.classList.add('hidden');
+        };
+        if (script) script.addEventListener('load', reveal, { once: true });
+        // Safety net: reveal even if the load event is missed.
+        setTimeout(reveal, 4000);
+      });
+    }
   }
 
   // --- Spline Performance Manager ---
