@@ -157,6 +157,50 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // --- Deferred Spline runtime loading ---
+  // The Spline runtime (596KB JS + 182KB wasm) plus the 1.2MB scene are the
+  // heaviest assets on the page. On desktop we load them right away (fast
+  // hero). On phones we wait until the page has fully loaded and the main
+  // thread is idle, so first paint and initial scrolling are never blocked.
+  const needsSpline = !!document.querySelector('spline-viewer');
+
+  const loadSplineRuntime = () => {
+    if (document.querySelector('script[src*="spline-viewer.js"]')) return;
+    const head = document.head;
+    const mkLink = (rel, href, attrs) => {
+      const l = document.createElement('link');
+      l.rel = rel;
+      l.href = href;
+      if (attrs) Object.keys(attrs).forEach(k => l.setAttribute(k, attrs[k]));
+      head.appendChild(l);
+      return l;
+    };
+    mkLink('preconnect', 'https://prod.spline.design', { crossorigin: '' });
+    mkLink('preconnect', 'https://unpkg.com', { crossorigin: '' });
+    mkLink('preload', 'https://prod.spline.design/4IwzGcC1Bo3ZCSX2/scene.splinecode', { as: 'fetch', crossorigin: 'anonymous' });
+    const s = document.createElement('script');
+    s.type = 'module';
+    s.src = 'https://unpkg.com/@splinetool/viewer@1.9.0/build/spline-viewer.js';
+    s.async = true;
+    head.appendChild(s);
+  };
+
+  if (needsSpline) {
+    if (isMobile) {
+      const startDeferred = () => {
+        if ('requestIdleCallback' in window) {
+          requestIdleCallback(loadSplineRuntime, { timeout: 3000 });
+        } else {
+          setTimeout(loadSplineRuntime, 1200);
+        }
+      };
+      if (document.readyState === 'complete') startDeferred();
+      else window.addEventListener('load', startDeferred, { once: true });
+    } else {
+      loadSplineRuntime();
+    }
+  }
+
   // --- Spline Performance Manager ---
   // Continuous full-screen WebGL animation is the #1 jank source. Strategy:
   //   1. Load the scene ONCE and keep it loaded forever (no `unloadable`), so it
