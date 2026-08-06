@@ -212,13 +212,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  const freezeSplines = () => {
+  // Pause/resume rather than stop/play: pause() freezes the scene in place and
+  // play() continues from that exact frame ("save state"), while stop() resets
+  // the scene so the intro animation replays every scroll.
+  const pauseSplines = () => {
     splineApps().forEach(app => {
-      try { if (!app.isStopped) app.stop(); } catch (e) { /* ignore */ }
+      try { app.pause(); } catch (e) { /* ignore */ }
     });
   };
 
-  const thawSplines = () => {
+  const resumeSplines = () => {
     splineApps().forEach(app => {
       try { app.play(); } catch (e) { /* ignore */ }
     });
@@ -245,13 +248,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Pause scenes while scrolling (desktop) so zero WebGL work happens
-  // mid-scroll, then resume right after. Phones keep their "video" rolling.
+  // mid-scroll, then resume from the same frame right after. Android's
+  // "video" is excluded and keeps rolling.
   let scrollTimer = null;
   window.addEventListener('scroll', () => {
     if (phoneVideoMode) return;
-    freezeSplines();
+    pauseSplines();
     clearTimeout(scrollTimer);
-    scrollTimer = setTimeout(thawSplines, 400);
+    scrollTimer = setTimeout(resumeSplines, 400);
   }, { passive: true });
 
   // --- Block LinkedIn links baked into Spline scene hotspots ---
